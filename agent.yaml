@@ -1,0 +1,66 @@
+apiVersion: adk.google.com/v1alpha1
+kind: AgentDeployment
+metadata:
+  name: florida-family-trip-planner
+  labels:
+    app: florida-trip-planner
+    tier: multi-agent-coordinator
+    evaluation: ai-in-5-days
+spec:
+  rootAgent:
+    name: FloridaTripPlanner
+    entrypoint: agent:root_agent
+    model: gemini-2.5-pro
+    description: >
+      Master Coordinator Agent for a balanced 10-day Florida family vacation covering
+      Orlando theme parks, Gulf & Atlantic beaches, kid-friendly dining, and driving pacing.
+  subAgents:
+    - name: ThemeParkAgent
+      model: gemini-2.5-flash
+      role: Orlando theme parks (Disney, Universal, LEGOLAND, KSC) & kid attraction pacing
+      tools:
+        - search_theme_park_attractions
+        - request_booking_confirmation
+    - name: BeachOutdoorAgent
+      model: gemini-2.5-flash
+      role: Gulf & Atlantic family beaches (Clearwater, Cocoa Beach), weather & driving pacing
+      tools:
+        - find_family_beaches
+        - calculate_driving_and_pacing
+    - name: DiningAgent
+      model: gemini-2.5-flash
+      role: Kid-friendly restaurants, allergy protocols & HITL dining reservations
+      tools:
+        - recommend_kid_friendly_dining
+        - request_booking_confirmation
+  guardrails:
+    humanInTheLoop:
+      enabled: true
+      protectedTools:
+        - request_booking_confirmation
+      requireExplicitConfirmationFlag: user_confirmed
+    piiRedaction:
+      enabled: true
+      patterns:
+        - CREDIT_CARD
+        - EMAIL
+        - PHONE_NUMBER
+  observability:
+    structuredJsonLogging: true
+    logIntentAndOutcome: true
+    openTelemetry:
+      enabled: true
+      serviceName: florida-family-trip-planner-adk
+  runtime:
+    container:
+      dockerfile: Dockerfile
+      pythonVersion: "3.11"
+    env:
+      - name: FAST_TOOL_MODEL
+        value: "gemini-2.5-flash"
+      - name: MASTER_SYNTHESIS_MODEL
+        value: "gemini-2.5-pro"
+    secrets:
+      - name: GEMINI_API_KEY
+        source: environment
+        required: true
